@@ -1,0 +1,47 @@
+package com.example.myauth.controller;
+
+import com.example.myauth.dto.ApiResponse;
+import com.example.myauth.entity.User;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 사용자 정보 관련 컨트롤러
+ */
+@Slf4j
+@RestController
+public class UserController {
+
+  /**
+   * 현재 로그인한 사용자 정보 조회
+   *
+   * @param user SecurityContext에서 자동으로 주입되는 현재 로그인한 사용자 (JWT 토큰에서 추출됨)
+   * @return 사용자 정보를 포함한 ApiResponse
+   */
+  @GetMapping("/me")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> me(
+      @AuthenticationPrincipal User user
+  ) {
+    log.info("현재 사용자 정보 조회 요청: {}", user.getEmail());
+
+    // 사용자 정보를 Map으로 구성
+    Map<String, Object> userInfo = new HashMap<>();
+    userInfo.put("id", user.getId());
+    userInfo.put("email", user.getEmail());
+    userInfo.put("name", user.getName());
+    userInfo.put("role", user.getRole().name());
+    userInfo.put("isActive", user.getIsActive());
+
+    // 응답 생성
+    ApiResponse<Map<String, Object>> response =
+        ApiResponse.success("사용자 정보 조회 성공", userInfo);
+
+    return ResponseEntity.ok(response);
+  }
+}

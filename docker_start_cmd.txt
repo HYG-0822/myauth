@@ -1,0 +1,20 @@
+docker run -d \
+    --name mysql-8 \
+    -p 3306:3306 \
+    -e MYSQL_ROOT_PASSWORD=1234 \
+    -e TZ=Asia/Seoul \
+    mysql:8.0.33 \
+    --default-time-zone='+09:00'
+
+  각 옵션 설명:
+  - -d: 백그라운드 실행
+  - --name mysql-8: 컨테이너 이름 지정
+  - -p 3306:3306: 포트 매핑 (호스트:컨테이너)
+  - -e MYSQL_ROOT_PASSWORD=1234: MySQL root 비밀번호 설정
+  - -e TZ=Asia/Seoul: 컨테이너 시스템 타임존 설정
+  - mysql:8.0.33: 사용할 Docker 이미지
+  - --default-time-zone='+09:00': MySQL 서버 타임존 설정 (KST)
+
+  타임존 설정 2가지:
+  1. TZ=Asia/Seoul → 컨테이너 OS 레벨 타임존
+  2. --default-time-zone='+09:00' → MySQL 서버 타임존

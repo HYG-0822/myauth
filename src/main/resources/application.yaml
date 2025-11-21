@@ -1,0 +1,39 @@
+server:
+  port: 9080
+
+# JWT 설정
+jwt:
+  secret: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
+  # 비밀 키 (최소 64자 이상, 실제로는 환경변수로 관리해야 함)
+  access-token-expiration: 3600000    # Access Token 만료 시간 (1시간 = 3600000ms)
+  refresh-token-expiration: 604800000  # Refresh Token 만료 시간 (7일 = 604800000ms)
+
+spring:
+  application:
+    name: myauth
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      # none : 실제 Database에 아무런 영향을 주지 않음, 테이블 생성 자동화 없음
+      # validate: 엔티티와 테이블 구조가 일치하는지 검증만 함, 수정하지 않음, 일치하지 않으면 예외발생
+      # update : 엔티티 변경사항을 기반으로 DB테이블을 자동으로 업데이트함, 컬럼 삭제 안됨, 기존데이터 유지
+      # create : 어플리케이션을 실행할때마다 기존테이블 삭제 -> 새롭게 테이블 생성, 기존데이터 모두 삭제, 테스트용 개발 초기에만 사용
+      # create-drop : create와 동일하지만 app종료 시점에 테이블 전체 drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        # Hibernate가 DB에 날짜/시간을 저장할 때 사용할 타임존 (한국 시간)
+        jdbc:
+          time_zone: Asia/Seoul
+
+
+
