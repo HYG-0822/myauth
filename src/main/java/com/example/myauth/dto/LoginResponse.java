@@ -7,22 +7,13 @@ import lombok.NoArgsConstructor;
 
 /**
  * 로그인 성공 시 반환하는 응답 DTO
+ * ApiResponse의 data 필드에 담겨서 반환됨
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
-  /**
-   * 로그인 성공 여부
-   */
-  private Boolean success;
-
-  /**
-   * 응답 메시지
-   */
-  private String message;
-
   /**
    * Access Token (짧은 만료 시간, API 요청 시 사용)
    */
@@ -34,7 +25,7 @@ public class LoginResponse {
   private String refreshToken;
 
   /**
-   * 사용자 정보 (선택사항)
+   * 사용자 정보
    */
   private UserInfo user;
 
@@ -50,18 +41,5 @@ public class LoginResponse {
     private String email;
     private String name;
     private String role;
-  }
-
-  /**
-   * 성공 응답 생성 헬퍼 메서드
-   */
-  public static LoginResponse success(String accessToken, String refreshToken, UserInfo user) {
-    return LoginResponse.builder()
-        .success(true)
-        .message("로그인 성공")
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .user(user)
-        .build();
   }
 }

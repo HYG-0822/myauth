@@ -30,6 +30,12 @@ public class JwtTokenProvider {
       @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration
   ) {
     // 비밀 키를 SecretKey 객체로 변환
+    System.out.println("===========================================================================");
+    System.out.println(secret);
+    System.out.println(accessTokenExpiration);
+    System.out.println(refreshTokenExpiration);
+    System.out.println("===========================================================================");
+
     this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     this.accessTokenExpiration = accessTokenExpiration;
     this.refreshTokenExpiration = refreshTokenExpiration;
@@ -45,10 +51,16 @@ public class JwtTokenProvider {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
 
+    System.out.println("===========================================================================");
+    log.debug("generateAccessToken() : userEmail={}, userId={}", userEmail, userId);
+    log.debug("generateAccessToken::now : {}", now);
+    log.debug("generateAccessToken::expiryDate : {}", expiryDate);
+    System.out.println("===========================================================================");
+
     return Jwts.builder()
         .subject(userEmail)                    // 토큰 주체 (사용자 이메일)
-        .claim("userId", userId)               // 사용자 ID 추가
-        .claim("type", "access")               // 토큰 타입
+        .claim("userId", userId)            // 사용자 ID 추가
+        .claim("type", "access")         // 토큰 타입
         .issuedAt(now)                         // 발행 시간
         .expiration(expiryDate)                // 만료 시간
         .signWith(secretKey)                   // 서명
@@ -63,6 +75,12 @@ public class JwtTokenProvider {
   public String generateRefreshToken(String userEmail) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + refreshTokenExpiration);
+
+    System.out.println("===========================================================================");
+    log.debug("generateRefreshToken() : userEmail={}", userEmail);
+    log.debug("generateRefreshToken::now : {}", now);
+    log.debug("generateRefreshToken::expiryDate : {}", expiryDate);
+    System.out.println("===========================================================================");
 
     return Jwts.builder()
         .subject(userEmail)                    // 토큰 주체 (사용자 이메일)
@@ -95,17 +113,22 @@ public class JwtTokenProvider {
 
   /**
    * 토큰 유효성 검증
+   *
    * @param token JWT 토큰
-   * @return 유효하면 true, 아니면 false
+   * @return 유효하면 true
+   * @throws ExpiredJwtException 토큰이 만료된 경우
+   * @throws JwtException 토큰이 유효하지 않은 경우 (서명 오류, 형식 오류 등)
+   * @throws IllegalArgumentException 토큰이 null이거나 빈 문자열인 경우
    */
   public boolean validateToken(String token) {
-    try {
-      parseToken(token);
-      return true;
-    } catch (JwtException | IllegalArgumentException e) {
-      log.error("JWT 토큰 검증 실패: {}", e.getMessage());
-      return false;
-    }
+    // parseToken() 호출 시 발생하는 예외를 그대로 전파
+    // - ExpiredJwtException: 토큰 만료
+    // - SignatureException: 서명 불일치
+    // - MalformedJwtException: 잘못된 JWT 형식
+    // - UnsupportedJwtException: 지원하지 않는 JWT
+    // - IllegalArgumentException: 빈 토큰
+    parseToken(token);
+    return true;
   }
 
   /**

@@ -11,7 +11,6 @@ import java.util.Optional;
  * Spring Data JPA가 자동으로 구현을 생성한다
  */
 @Repository
-@SuppressWarnings("NullableProblems")  // JpaRepository 제네릭 타입은 항상 non-null
 public interface UserRepository extends JpaRepository<User, Long> {
   /**
    * 이메일로 사용자를 조회한다

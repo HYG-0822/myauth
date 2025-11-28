@@ -16,8 +16,68 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * 모든 @RestController에서 발생하는 예외를 한 곳에서 처리한다
  */
 @Slf4j
-@RestControllerAdvice   // Spring 전역 예외처리기로 등록
+@RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  /**
+   * 인증 실패 예외 처리
+   * 이메일 또는 비밀번호가 올바르지 않을 때 발생
+   */
+  @ExceptionHandler(InvalidCredentialsException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
+      InvalidCredentialsException ex) {
+    log.warn("인증 실패: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.UNAUTHORIZED)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 토큰 관련 예외 처리
+   * Refresh Token이 유효하지 않거나 만료되었을 때 발생
+   */
+  @ExceptionHandler(TokenException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleTokenException(
+      TokenException ex) {
+    log.warn("토큰 오류: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.UNAUTHORIZED)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 계정 상태 관련 예외 처리
+   * 계정이 비활성화, 정지, 삭제 등의 상태일 때 발생
+   */
+  @ExceptionHandler(AccountException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleAccountException(
+      AccountException ex) {
+    log.warn("계정 상태 오류: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.FORBIDDEN)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 이메일 중복 예외 처리
+   * 회원가입 시 이미 존재하는 이메일로 가입을 시도할 때 발생
+   */
+  @ExceptionHandler(DuplicateEmailException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleDuplicateEmail(
+      DuplicateEmailException ex) {
+    log.warn("이메일 중복: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
   /**
    * Bean Validation 검증 실패 시 처리
    * Controller에서 @Valid 어노테이션으로 검증 실패한 경우 발생하는 예외를 처리한다

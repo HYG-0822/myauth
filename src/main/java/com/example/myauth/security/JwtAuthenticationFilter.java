@@ -3,7 +3,7 @@ package com.example.myauth.security;
 import com.example.myauth.dto.JwtErrorResponse;
 import com.example.myauth.entity.User;
 import com.example.myauth.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -50,78 +50,75 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   ) throws ServletException, IOException {
 
     try {
-      // 1️⃣ Authorization 헤더에서 JWT 토큰 추출
+      // Authorization 헤더에서 JWT 토큰 추출
       String token = extractTokenFromRequest(request);
 
-      // 2️⃣ 토큰이 존재하는지 확인
+      // 토큰이 존재하면 인증 처리 (예외 발생 시 catch 블록에서 처리)
       if (token != null) {
-        try {
-          // 3️⃣ 토큰 검증 (만료 여부 포함)
-          if (jwtTokenProvider.validateToken(token)) {
-
-            // 4️⃣ 토큰에서 사용자 정보 추출
-            String email = jwtTokenProvider.getEmailFromToken(token);
-            Long userId = jwtTokenProvider.getUserIdFromToken(token);
-
-            log.debug("JWT 토큰 검증 성공 - 이메일: {}, userId: {}", email, userId);
-
-            // 5️⃣ DB에서 사용자 조회 (선택사항 - 성능을 위해 생략 가능)
-            User user = userRepository.findById(userId)
-                .orElse(null);
-
-            if (user != null && user.getIsActive()) {
-              // 6️⃣ Spring Security 인증 객체 생성
-              // 권한 정보 생성 (예: ROLE_USER)
-              List<SimpleGrantedAuthority> authorities = List.of(
-                  new SimpleGrantedAuthority(user.getRole().name())
-              );
-
-              // 인증 토큰 생성 (principal: 사용자 정보, credentials: 비밀번호(null), authorities: 권한)
-              UsernamePasswordAuthenticationToken authentication =
-                  new UsernamePasswordAuthenticationToken(user, null, authorities);
-
-              // 요청 정보 추가 (IP 주소 등)
-              authentication.setDetails(
-                  new WebAuthenticationDetailsSource().buildDetails(request)
-              );
-
-              // 7️⃣ SecurityContext에 인증 정보 설정
-              // 이제 컨트롤러에서 @AuthenticationPrincipal로 사용자 정보에 접근 가능
-              SecurityContextHolder.getContext().setAuthentication(authentication);
-
-              log.debug("SecurityContext에 인증 정보 설정 완료: {}", email);
-            }
-          }
-
-        } catch (ExpiredJwtException e) {
-          // ⚠️ 토큰이 만료된 경우 - 클라이언트에게 /refresh 호출하도록 안내
-          log.warn("JWT 토큰이 만료되었습니다 - 사용자: {}, 경로: {}", e.getClaims().getSubject(), request.getRequestURI());
-          sendErrorResponse(response, JwtErrorResponse.tokenExpired(request.getRequestURI()), HttpStatus.UNAUTHORIZED);
-          return; // 필터 체인 중단 (인증 실패로 더 이상 진행하지 않음)
-
-        } catch (JwtException e) {
-          // ❌ 유효하지 않은 토큰 (서명 오류, 형식 오류 등) - 클라이언트에게 재로그인 요구
-          log.error("유효하지 않은 JWT 토큰: {}, 경로: {}", e.getMessage(), request.getRequestURI());
-          sendErrorResponse(response, JwtErrorResponse.invalidToken(request.getRequestURI()), HttpStatus.UNAUTHORIZED);
-          return; // 필터 체인 중단
-
-        } catch (IllegalArgumentException e) {
-          // ❌ 잘못된 형식의 토큰
-          log.error("잘못된 형식의 JWT 토큰: {}, 경로: {}", e.getMessage(), request.getRequestURI());
-          sendErrorResponse(response, JwtErrorResponse.invalidToken(request.getRequestURI()), HttpStatus.UNAUTHORIZED);
-          return; // 필터 체인 중단
-        }
+        authenticateWithToken(token, request);
       }
 
+    } catch (ExpiredJwtException e) {
+      // ⚠️ 토큰 만료: 클라이언트가 /refresh를 호출하도록 안내
+      log.warn("JWT 토큰 만료 - 사용자: {}, 경로: {}", e.getClaims().getSubject(), request.getRequestURI());
+      sendErrorResponse(response, JwtErrorResponse.tokenExpired(request.getRequestURI()), HttpStatus.UNAUTHORIZED);
+      return; // 필터 체인 중단
+
+    } catch (JwtException | IllegalArgumentException e) {
+      // ❌ 유효하지 않은 토큰: 클라이언트가 재로그인하도록 안내
+      log.error("유효하지 않은 JWT 토큰 - 경로: {}, 오류: {}", request.getRequestURI(), e.getMessage());
+      sendErrorResponse(response, JwtErrorResponse.invalidToken(request.getRequestURI()), HttpStatus.UNAUTHORIZED);
+      return; // 필터 체인 중단
+
     } catch (Exception e) {
-      // 예상치 못한 오류가 발생한 경우
-      log.error("JWT 인증 처리 중 예상치 못한 오류 발생: {}", e.getMessage(), e);
-      // 예외가 발생해도 필터 체인은 계속 진행 (인증 실패로 처리됨)
+      // 예상치 못한 오류: 로그 기록 후 필터 체인 계속 진행 (인증 실패로 처리)
+      log.error("JWT 인증 처리 중 예상치 못한 오류 - 경로: {}, 오류: {}", request.getRequestURI(), e.getMessage(), e);
     }
 
-    // 8️⃣ 다음 필터로 요청 전달
-    // 토큰이 없거나, 유효한 경우, 또는 예상치 못한 오류가 발생한 경우 여기까지 도달
+    // 다음 필터로 요청 전달
     filterChain.doFilter(request, response);
+  }
+
+  /**
+   * JWT 토큰을 검증하고 인증 정보를 SecurityContext에 설정
+   * validateToken() 내부에서 ExpiredJwtException, JwtException 등이 발생하면 상위로 전파됨
+   *
+   * @param token JWT 토큰 문자열
+   * @param request HTTP 요청 객체
+   * @throws ExpiredJwtException 토큰이 만료된 경우 (validateToken 내부에서 발생)
+   * @throws JwtException 토큰이 유효하지 않은 경우 (validateToken 내부에서 발생)
+   */
+  private void authenticateWithToken(String token, HttpServletRequest request) {
+    // 토큰 검증 (만료 시 ExpiredJwtException, 유효하지 않으면 JwtException 발생)
+    jwtTokenProvider.validateToken(token);
+
+    // 토큰에서 사용자 정보 추출
+    String email = jwtTokenProvider.getEmailFromToken(token);
+    Long userId = jwtTokenProvider.getUserIdFromToken(token);
+
+    log.debug("JWT 토큰 검증 성공 - 이메일: {}, userId: {}", email, userId);
+
+    // DB에서 사용자 조회
+    User user = userRepository.findById(userId).orElse(null);
+
+    // 사용자가 존재하고 활성화 상태인 경우에만 인증 설정
+    if (user != null && user.getIsActive()) {
+      // Spring Security 인증 객체 생성
+      List<SimpleGrantedAuthority> authorities = List.of(
+          new SimpleGrantedAuthority(user.getRole().name())
+      );
+
+      UsernamePasswordAuthenticationToken authentication =
+          new UsernamePasswordAuthenticationToken(user, null, authorities);
+
+      // 요청 정보 추가 (IP 주소 등)
+      authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+      // SecurityContext에 인증 정보 설정
+      SecurityContextHolder.getContext().setAuthentication(authentication);
+
+      log.debug("SecurityContext에 인증 정보 설정 완료: {}", email);
+    }
   }
 
   /**
@@ -161,7 +158,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
 
-    // JSON 직렬화 및 응답 작성 (Spring이 관리하는 ObjectMapper 사용)
+    // JSON 직렬화 및 응답 작성 (Spring Boot가 자동 제공하는 ObjectMapper 사용)
     String jsonResponse = objectMapper.writeValueAsString(errorResponse);
     response.getWriter().write(jsonResponse);
   }

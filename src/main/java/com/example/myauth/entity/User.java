@@ -1,5 +1,6 @@
 package com.example.myauth.entity;
 
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;

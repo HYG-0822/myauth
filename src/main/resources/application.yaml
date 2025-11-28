@@ -5,7 +5,7 @@ server:
 jwt:
   secret: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
   # 비밀 키 (최소 64자 이상, 실제로는 환경변수로 관리해야 함)
-  access-token-expiration: 3600000    # Access Token 만료 시간 (1시간 = 3600000ms)
+  access-token-expiration: 3600000    # Access Token 만료 시간 (1시간 = 3600000ms),  60초 * 60분
   refresh-token-expiration: 604800000  # Refresh Token 만료 시간 (7일 = 604800000ms)
 
 logging:
@@ -14,6 +14,9 @@ logging:
   level:
     root: INFO
     com.example.myauth: DEBUG
+    # Spring Security 필터 체인 디버그 로깅 (애플리케이션 시작 시 필터 체인 출력)
+    org.springframework.security: DEBUG
+    org.springframework.security.web.DefaultSecurityFilterChain: DEBUG
   logback:
     rollingpolicy:
       max-file-size: 10MB
