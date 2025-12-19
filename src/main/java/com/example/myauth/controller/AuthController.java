@@ -108,6 +108,9 @@ public class AuthController {
       log.info("쿠키 Secure 플래그: {}", appProperties.getCookie().isSecure());
       refreshTokenCookie.setPath("/");        // 모든 경로에서 쿠키 전송
       refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일 (초 단위)
+      // Domain 설정 제거 - 기본 도메인(localhost:9080)에만 쿠키 설정
+      // SameSite는 브라우저 기본값(Lax) 사용
+      log.info("쿠키 설정 완료 (Domain: 기본값, SameSite: 브라우저 기본값)");
 
       response.addCookie(refreshTokenCookie);
       log.info("Refresh Token을 쿠키에 설정 완료");

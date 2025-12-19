@@ -9,6 +9,7 @@ import com.example.myauth.util.ClientTypeDetector;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -30,14 +31,91 @@ public class KakaoAuthController {
   private final AppProperties appProperties;
 
   /**
+   * 토큰 교환 엔드포인트 (Cross-Port 쿠키 문제 해결용)
+   * OAuth callback에서 세션에 저장한 토큰을 가져와 HTTP-only 쿠키로 설정
+   * 이 엔드포인트는 프론트엔드가 Vite 프록시를 통해 호출하므로 쿠키가 정상 작동함
+   *
+   * POST /auth/kakao/exchange-token
+   *
+   * @param request HTTP 요청 객체 (세션에서 토큰 가져오기)
+   * @param response HTTP 응답 객체 (쿠키 설정)
+   * @return Access Token과 사용자 정보
+   */
+  @PostMapping("/exchange-token")
+  public ResponseEntity<ApiResponse<LoginResponse>> exchangeToken(
+      HttpServletRequest request,
+      HttpServletResponse response
+  ) {
+    log.info("토큰 교환 요청");
+
+    // 1️⃣ 세션에서 대기 중인 LoginResponse 가져오기
+    HttpSession session = request.getSession(false);
+    if (session == null) {
+      log.warn("세션이 없음 - 토큰 교환 실패");
+      return ResponseEntity
+          .status(401)
+          .body(ApiResponse.error("세션이 만료되었습니다. 다시 로그인해주세요."));
+    }
+
+    LoginResponse loginResponse = (LoginResponse) session.getAttribute("pendingLoginResponse");
+    if (loginResponse == null) {
+      log.warn("세션에 pendingLoginResponse가 없음 - 토큰 교환 실패");
+      return ResponseEntity
+          .status(401)
+          .body(ApiResponse.error("로그인 정보가 없습니다. 다시 로그인해주세요."));
+    }
+
+    // 2️⃣ 세션에서 제거 (일회용)
+    session.removeAttribute("pendingLoginResponse");
+    log.info("세션에서 pendingLoginResponse 제거 완료");
+
+    // 3️⃣ Refresh Token을 HTTP-only 쿠키로 설정
+    Cookie refreshTokenCookie = new Cookie("refreshToken", loginResponse.getRefreshToken());
+    refreshTokenCookie.setHttpOnly(true);   // JavaScript 접근 불가 (XSS 방어)
+    refreshTokenCookie.setSecure(appProperties.getCookie().isSecure());  // 환경별 동적 설정
+    log.info("쿠키 Secure 플래그: {}", appProperties.getCookie().isSecure());
+    refreshTokenCookie.setPath("/");        // 모든 경로에서 쿠키 전송
+    refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일 (초 단위)
+    log.info("쿠키 설정: HttpOnly=true, Secure={}, Path=/, MaxAge=7일", appProperties.getCookie().isSecure());
+
+    response.addCookie(refreshTokenCookie);
+    log.info("Refresh Token을 쿠키에 설정 완료");
+
+    // 4️⃣ 응답 바디에서 Refresh Token 제거 (보안 강화)
+    loginResponse.setRefreshToken(null);
+    log.info("응답 바디에서 Refresh Token 제거 (쿠키로만 전송)");
+
+    // 5️⃣ Access Token과 사용자 정보 반환
+    log.info("토큰 교환 성공 - User: {}", loginResponse.getUser().getEmail());
+    return ResponseEntity.ok(ApiResponse.success("토큰 교환 성공", loginResponse));
+  }
+
+  /**
    * 카카오 로그인 시작
    * 사용자를 카카오 로그인 페이지로 리다이렉트
    *
-   * GET /auth/kakao/login
+   * GET /auth/kakao/login?redirectUrl=프론트엔드_콜백_URL
+   *
+   * @param redirectUrl 카카오 로그인 완료 후 리다이렉트할 프론트엔드 URL (선택적)
+   * @param session HTTP 세션 (redirectUrl 저장용)
+   * @param response HTTP 응답 객체 (리다이렉트용)
    */
   @GetMapping("/login")
-  public void kakaoLogin(HttpServletResponse response) throws IOException {
-    log.info("카카오 로그인 요청");
+  public void kakaoLogin(
+      @RequestParam(required = false) String redirectUrl,
+      HttpSession session,
+      HttpServletResponse response
+  ) throws IOException {
+    log.info("카카오 로그인 요청 - redirectUrl: {}", redirectUrl);
+
+    // 프론트엔드에서 전달한 redirectUrl을 세션에 저장
+    // 카카오 OAuth 플로우 완료 후 콜백 처리 시 사용됨
+    if (redirectUrl != null && !redirectUrl.isBlank()) {
+      session.setAttribute("kakaoRedirectUrl", redirectUrl);
+      log.info("프론트엔드 redirectUrl을 세션에 저장: {}", redirectUrl);
+    } else {
+      log.info("redirectUrl이 없으므로 기본 설정값을 사용합니다.");
+    }
 
     // 카카오 인가 코드 요청 URL 생성
     String authorizationUrl = kakaoOAuthService.getAuthorizationUrl();
@@ -71,6 +149,25 @@ public class KakaoAuthController {
     log.info("카카오 로그인 콜백 - code: {}", code);
 
     try {
+      // 0️⃣ 세션에서 프론트엔드 redirectUrl 가져오기
+      HttpSession session = request.getSession(false);
+      String frontendRedirectUrl = null;
+
+      if (session != null) {
+        frontendRedirectUrl = (String) session.getAttribute("kakaoRedirectUrl");
+        if (frontendRedirectUrl != null) {
+          log.info("세션에서 프론트엔드 redirectUrl 복원: {}", frontendRedirectUrl);
+          // 사용 후 세션에서 제거 (보안 및 메모리 관리)
+          session.removeAttribute("kakaoRedirectUrl");
+        }
+      }
+
+      // redirectUrl이 없으면 기본 설정값 사용
+      if (frontendRedirectUrl == null || frontendRedirectUrl.isBlank()) {
+        frontendRedirectUrl = appProperties.getOauth().getKakaoRedirectUrl();
+        log.info("세션에 redirectUrl이 없어 기본 설정값 사용: {}", frontendRedirectUrl);
+      }
+
       // 1️⃣ 클라이언트 타입 감지
       boolean isWebClient = ClientTypeDetector.isWebClient(request);
       String clientType = ClientTypeDetector.getClientTypeString(request);
@@ -88,29 +185,25 @@ public class KakaoAuthController {
       LoginResponse loginResponse = kakaoOAuthService.processKakaoLogin(kakaoUserInfo);
       log.info("카카오 로그인 성공 - User ID: {}", loginResponse.getUser().getId());
 
-      // 5️⃣ 웹 클라이언트면 Refresh Token을 쿠키로 설정하고 프론트엔드로 리다이렉트
+      // 5️⃣ 웹 클라이언트면 토큰을 세션에 저장하고 프론트엔드로 리다이렉트
       if (isWebClient) {
-        log.info("웹 클라이언트 감지 → Refresh Token을 HTTP-only 쿠키로 설정하고 프론트엔드로 리다이렉트");
+        log.info("웹 클라이언트 감지 → 토큰을 세션에 임시 저장하고 프론트엔드로 리다이렉트");
 
-        // Refresh Token을 HTTP-only 쿠키로 설정
-        Cookie refreshTokenCookie = new Cookie("refreshToken", loginResponse.getRefreshToken());
-        refreshTokenCookie.setHttpOnly(true);   // JavaScript 접근 불가 (XSS 방어)
-        refreshTokenCookie.setSecure(appProperties.getCookie().isSecure());  // 환경별 동적 설정 (개발: false, 프로덕션: true)
-        log.info("쿠키 Secure 플래그: {}", appProperties.getCookie().isSecure());
-        refreshTokenCookie.setPath("/");        // 모든 경로에서 쿠키 전송
-        refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일 (초 단위)
+        // 🔒 Cross-Port 쿠키 문제 해결:
+        // OAuth callback은 localhost:9080에서 처리되지만, 쿠키를 여기서 설정하면
+        // localhost:5173의 프론트엔드에서 접근할 수 없음
+        // 따라서 토큰을 세션에 임시 저장하고, 프론트엔드가 /exchange-token을 호출하여
+        // Vite 프록시를 통해 쿠키를 받도록 변경
 
-        response.addCookie(refreshTokenCookie);
-        log.info("Refresh Token을 쿠키에 설정 완료");
+        HttpSession sessionForToken = request.getSession(true);
+        sessionForToken.setAttribute("pendingLoginResponse", loginResponse);
+        log.info("LoginResponse를 세션에 임시 저장 완료 (세션 ID: {})", sessionForToken.getId());
 
-        // 프론트엔드 리다이렉트 URL 생성 (Access Token을 URL 파라미터로 전달)
-        String redirectUrl = String.format("%s?accessToken=%s",
-            appProperties.getOauth().getKakaoRedirectUrl(),
-            loginResponse.getAccessToken()
-        );
+        // 프론트엔드로 리다이렉트 (status=success로 전달)
+        String successRedirectUrl = String.format("%s?status=success", frontendRedirectUrl);
 
-        log.info("프론트엔드로 리다이렉트: {}", redirectUrl);
-        response.sendRedirect(redirectUrl);
+        log.info("프론트엔드로 리다이렉트: {}", successRedirectUrl);
+        response.sendRedirect(successRedirectUrl);
       } else {
         // 6️⃣ 모바일 클라이언트면 JSON 응답 반환
         log.info("모바일 클라이언트 감지 → JSON 응답 반환");
@@ -133,12 +226,29 @@ public class KakaoAuthController {
 
     } catch (Exception e) {
       log.error("카카오 로그인 실패: {}", e.getMessage(), e);
+
+      // 에러 발생 시 사용할 redirectUrl 결정 (세션 또는 기본값)
+      HttpSession session = request.getSession(false);
+      String errorRedirectUrl = null;
+
+      if (session != null) {
+        errorRedirectUrl = (String) session.getAttribute("kakaoRedirectUrl");
+        if (errorRedirectUrl != null) {
+          session.removeAttribute("kakaoRedirectUrl");
+        }
+      }
+
+      if (errorRedirectUrl == null || errorRedirectUrl.isBlank()) {
+        errorRedirectUrl = appProperties.getOauth().getKakaoRedirectUrl();
+      }
+
       // 에러 발생 시 프론트엔드로 리다이렉트 (에러 메시지 포함)
-      String errorRedirectUrl = String.format("%s?error=%s",
-          appProperties.getOauth().getKakaoRedirectUrl(),
+      String finalErrorRedirectUrl = String.format("%s?error=%s",
+          errorRedirectUrl,
           java.net.URLEncoder.encode(e.getMessage(), "UTF-8")
       );
-      response.sendRedirect(errorRedirectUrl);
+      log.info("에러 발생 - 프론트엔드로 리다이렉트: {}", finalErrorRedirectUrl);
+      response.sendRedirect(finalErrorRedirectUrl);
     }
   }
 }
