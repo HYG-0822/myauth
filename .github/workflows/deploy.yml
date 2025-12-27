@@ -261,7 +261,61 @@ jobs:
             SPRING_PROFILES_ACTIVE=prod
             EOF
 
-            # ===== 3. GitHub Container Registry(GHCR)에 로그인 =====
+            # ===== 3. docker-compose.prod.yml 파일 자동 생성 =====
+            # 프로덕션 환경 Docker Compose 설정 파일도 자동 생성
+            # - 서버에 수동으로 파일을 업로드할 필요 없음
+            # - 설정이 항상 최신 상태로 유지됨
+            cat > docker-compose.prod.yml << 'EOF'
+            # ================================================
+            # 프로덕션 환경 Docker Compose
+            # AWS Lightsail 배포용 (GitHub Actions 자동 생성)
+            # ================================================
+
+            version: '3.8'
+
+            services:
+              # Spring Boot 백엔드
+              backend:
+                # GitHub Container Registry에서 이미지 가져오기
+                image: ghcr.io/icesnake72/myauth:latest
+                container_name: prod-backend
+
+                # 백엔드 포트 노출 (프론트엔드는 80 포트 사용 예정)
+                ports:
+                  - "8080:9080"
+
+                environment:
+                  # 환경 변수는 .env 파일에서 자동 로드
+                  DB_URL: ${DB_URL}
+                  DB_USERNAME: ${DB_USERNAME}
+                  DB_PASSWORD: ${DB_PASSWORD}
+                  JWT_SECRET: ${JWT_SECRET}
+                  JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600000}
+                  JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+                  KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+                  KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+                  KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+                  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+
+                networks:
+                  - prod-network
+
+                # 로그 설정 (로그 파일 크기 제한)
+                logging:
+                  driver: "json-file"
+                  options:
+                    max-size: "10m"
+                    max-file: "3"
+
+                restart: unless-stopped
+
+            networks:
+              prod-network:
+                driver: bridge
+                name: prod-network
+            EOF
+
+            # ===== 4. GitHub Container Registry(GHCR)에 로그인 =====
             # Docker 이미지를 다운로드하려면 먼저 GHCR에 인증 필요
             #
             # echo "${{ secrets.GITHUB_TOKEN }}": GitHub이 자동 제공하는 토큰
@@ -274,7 +328,7 @@ jobs:
             # - --password-stdin: 표준 입력(stdin)에서 비밀번호 읽기 (보안 강화)
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # ===== 4. 최신 Docker 이미지 다운로드 =====
+            # ===== 5. 최신 Docker 이미지 다운로드 =====
             # docker-compose pull: 레지스트리에서 최신 이미지를 다운로드
             # - -f docker-compose.prod.yml: 프로덕션 설정 파일 지정
             # - backend: backend 서비스의 이미지만 다운로드
@@ -283,7 +337,7 @@ jobs:
             # - ghcr.io/icesnake72/myauth:latest (이전 단계에서 푸시한 이미지)
             docker-compose -f docker-compose.prod.yml pull backend
 
-            # ===== 5. 컨테이너 시작/재시작 (무중단 배포) =====
+            # ===== 6. 컨테이너 시작/재시작 (무중단 배포) =====
             # docker-compose up: 컨테이너 생성 및 시작
             # - -d: 백그라운드 실행 (detached mode)
             # - backend: backend 서비스만 재시작
@@ -294,7 +348,7 @@ jobs:
             # 3. Lightsail Database는 별도 관리되므로 영향 없음
             docker-compose -f docker-compose.prod.yml up -d backend
 
-            # ===== 6. 사용하지 않는 이미지 정리 =====
+            # ===== 7. 사용하지 않는 이미지 정리 =====
             # docker image prune: 불필요한 이미지 삭제로 디스크 공간 확보
             # - -a: 모든 사용하지 않는 이미지 삭제
             # - -f: 확인 없이 강제 삭제 (force)
@@ -304,7 +358,7 @@ jobs:
             # - 태그가 없는 중간 레이어 이미지 (dangling images)
             docker image prune -af
 
-            # ===== 7. 배포 결과 확인 =====
+            # ===== 8. 배포 결과 확인 =====
             # docker-compose ps: 실행 중인 컨테이너 상태 확인
             # - 컨테이너가 정상적으로 실행 중인지 확인
             # - 포트 바인딩, 상태(Up/Exited) 등 표시
