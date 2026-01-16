@@ -52,7 +52,7 @@ services:
 
       # 파일 업로드 설정
       FILE_UPLOAD_DIR: /app/uploads
-      FILE_UPLOAD_BASE_URL: http://16.184.53.118:8080/uploads
+      FILE_UPLOAD_BASE_URL: http://localhost:9080/uploads
 
       # Spring 프로파일 (개발 환경)
       SPRING_PROFILES_ACTIVE: dev

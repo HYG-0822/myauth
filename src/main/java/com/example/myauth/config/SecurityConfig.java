@@ -88,6 +88,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/health", "/api/signup", "/api/login", "/api/loginEx", "/api/refresh").permitAll()
                 // 카카오 OAuth 로그인 경로 (인증 불필요)
                 .requestMatchers("/auth/kakao/**", "/api/auth/kakao/**").permitAll()
+                // 업로드된 이미지 파일 접근 (인증 불필요 - 공개 리소스)
+                .requestMatchers("/uploads/**").permitAll()
                 // 그 외 모든 요청은 인증 필요
                 .anyRequest().authenticated()
         )

@@ -58,6 +58,31 @@ public class UserController {
   }
 
   /**
+   * 현재 로그인한 사용자의 프로필 정보 조회
+   * User 테이블과 UserProfile 테이블의 정보를 함께 반환
+   *
+   * @param user 현재 로그인한 사용자 (JWT 토큰에서 추출됨)
+   * @return 프로필 정보를 포함한 ApiResponse
+   */
+  @GetMapping("/profile")
+  public ResponseEntity<ApiResponse<UserProfileUpdateResponse>> getProfile(
+      @AuthenticationPrincipal User user
+  ) {
+    log.info("사용자 프로필 조회 요청: userId={}, email={}", user.getId(), user.getEmail());
+
+    // UserService를 통해 프로필 조회
+    UserProfileUpdateResponse response = userService.getUserProfile(user.getId());
+
+    log.info("사용자 프로필 조회 완료: userId={}", user.getId());
+
+    // 응답 생성
+    ApiResponse<UserProfileUpdateResponse> apiResponse =
+        ApiResponse.success("프로필 조회 성공", response);
+
+    return ResponseEntity.ok(apiResponse);
+  }
+
+  /**
    * 사용자 프로필 정보 수정
    * User 테이블과 UserProfile 테이블의 정보를 동시에 수정
    *

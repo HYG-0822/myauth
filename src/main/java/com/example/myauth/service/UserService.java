@@ -105,6 +105,53 @@ public class UserService {
     log.info("사용자 프로필 수정 완료 - userId: {}", userId);
 
     // 5️⃣ 응답 DTO 생성 및 반환
+    return buildProfileResponse(user, userProfile);
+  }
+
+  /**
+   * 사용자 프로필 정보 조회
+   * User 테이블과 UserProfile 테이블의 정보를 함께 조회
+   *
+   * @param userId 사용자 ID
+   * @return 프로필 정보
+   * @throws RuntimeException 사용자를 찾을 수 없는 경우
+   */
+  @Transactional(readOnly = true)
+  public UserProfileUpdateResponse getUserProfile(Long userId) {
+    log.info("사용자 프로필 조회 요청 - userId: {}", userId);
+
+    // 1️⃣ User 조회
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> {
+          log.warn("존재하지 않는 사용자 ID로 프로필 조회 시도: {}", userId);
+          return new RuntimeException("사용자를 찾을 수 없습니다.");
+        });
+
+    // 2️⃣ UserProfile 조회 (없으면 빈 프로필 생성)
+    UserProfile userProfile = userProfileRepository.findByUser(userId)
+        .orElseGet(() -> {
+          log.info("UserProfile이 존재하지 않아 기본값 반환: userId={}", userId);
+          return UserProfile.builder()
+              .user(userId)
+              .country(1L)  // 기본값: 1
+              .build();
+        });
+
+    log.info("사용자 프로필 조회 완료 - userId: {}", userId);
+
+    // 3️⃣ 응답 DTO 생성 및 반환
+    return buildProfileResponse(user, userProfile);
+  }
+
+  /**
+   * User와 UserProfile 정보를 기반으로 응답 DTO 생성
+   * (공통 로직 추출)
+   *
+   * @param user User 엔티티
+   * @param userProfile UserProfile 엔티티
+   * @return 프로필 응답 DTO
+   */
+  private UserProfileUpdateResponse buildProfileResponse(User user, UserProfile userProfile) {
     return UserProfileUpdateResponse.builder()
         .userId(user.getId())
         .email(user.getEmail())
