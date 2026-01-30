@@ -118,6 +118,36 @@ public class GlobalExceptionHandler {
         .status(status)
         .body(ApiResponse.error(ex.getMessage()));
   }
+
+  /**
+   * 게시글을 찾을 수 없을 때 예외 처리
+   * 존재하지 않는 게시글 ID로 조회/수정/삭제 시도 시 발생
+   */
+  @ExceptionHandler(PostNotFoundException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handlePostNotFoundException(
+      PostNotFoundException ex) {
+    log.warn("게시글 조회 실패: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 권한 없는 접근 예외 처리
+   * 다른 사용자의 게시글 수정/삭제 시도 또는 비공개 게시글 접근 시 발생
+   */
+  @ExceptionHandler(UnauthorizedAccessException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleUnauthorizedAccessException(
+      UnauthorizedAccessException ex) {
+    log.warn("권한 없는 접근 시도: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.FORBIDDEN)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
   /**
    * Bean Validation 검증 실패 시 처리
    * Controller에서 @Valid 어노테이션으로 검증 실패한 경우 발생하는 예외를 처리한다

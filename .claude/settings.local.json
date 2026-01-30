@@ -14,7 +14,8 @@
       "Bash(cat:*)",
       "Bash(mysql:*)",
       "Bash(echo:*)",
-      "Bash(docker logs:*)"
+      "Bash(docker logs:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
