@@ -148,6 +148,68 @@ public class GlobalExceptionHandler {
         .status(HttpStatus.FORBIDDEN)
         .body(ApiResponse.error(ex.getMessage()));
   }
+
+  /**
+   * 댓글을 찾을 수 없을 때 예외 처리
+   * 존재하지 않는 댓글 ID로 조회/수정/삭제 시도 시 발생
+   */
+  @ExceptionHandler(CommentNotFoundException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleCommentNotFoundException(
+      CommentNotFoundException ex) {
+    log.warn("댓글 조회 실패: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 중복 좋아요 예외 처리
+   * 이미 좋아요한 게시글/댓글에 다시 좋아요 시도 시 발생
+   */
+  @ExceptionHandler(DuplicateLikeException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleDuplicateLikeException(
+      DuplicateLikeException ex) {
+    log.warn("중복 좋아요 시도: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.CONFLICT)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 좋아요 기록 없음 예외 처리
+   * 좋아요하지 않은 게시글/댓글의 좋아요 취소 시도 시 발생
+   */
+  @ExceptionHandler(LikeNotFoundException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleLikeNotFoundException(
+      LikeNotFoundException ex) {
+    log.warn("좋아요 기록 없음: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
+  /**
+   * 잘못된 인자 예외 처리
+   * 비즈니스 로직에서 유효하지 않은 인자 전달 시 발생
+   * 예: 대댓글의 대댓글 작성 시도
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  @SuppressWarnings("NullableProblems")
+  public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
+      IllegalArgumentException ex) {
+    log.warn("잘못된 요청: {}", ex.getMessage());
+
+    return ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ex.getMessage()));
+  }
+
   /**
    * Bean Validation 검증 실패 시 처리
    * Controller에서 @Valid 어노테이션으로 검증 실패한 경우 발생하는 예외를 처리한다
