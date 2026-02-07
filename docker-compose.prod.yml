@@ -31,7 +31,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
 
       # 데이터베이스 자동 생성
-      MYSQL_DATABASE: mannal
+      # ⚠️ 다른 프로젝트에서 사용 시 .env 파일에서 DB_NAME 설정
+      MYSQL_DATABASE: ${DB_NAME:-mannal}
 
       # 시간대 설정
       TZ: Asia/Seoul
@@ -127,10 +128,11 @@ services:
     # ========================================
     # GitHub Container Registry(GHCR)에서 미리 빌드된 이미지를 가져옴
     # - ghcr.io: GitHub Container Registry 주소
-    # - icesnake72/myauth: 저장소명
+    # - {사용자명}/{저장소명}: GitHub 저장소 경로
     # - latest: 태그 (가장 최신 버전)
     # - 이 이미지는 GitHub Actions에서 자동으로 빌드되어 업로드됨
-    image: ghcr.io/icesnake72/myauth:latest
+    # ⚠️ 다른 프로젝트에서 사용 시 .env 파일에서 DOCKER_IMAGE 설정
+    image: ${DOCKER_IMAGE:-ghcr.io/icesnake72/myauth:latest}
 
     # ========================================
     # 컨테이너 이름
@@ -161,13 +163,14 @@ services:
       # - prod-mysql: Docker Compose 네트워크 내에서 MySQL 컨테이너 이름으로 접근
       #   (IP 주소 대신 컨테이너 이름 사용 - Docker 내부 DNS가 자동 해석)
       # - 3306: MySQL 기본 포트
-      # - mannal: 데이터베이스 이름
+      # - ${DB_NAME:-mannal}: 데이터베이스 이름 (.env에서 설정 가능)
       # - useSSL=false: 개발/테스트용 (프로덕션에서는 true 권장)
       # - serverTimezone=Asia/Seoul: 서버 시간대 설정
       # - connectionTimeZone=Asia/Seoul: 연결 시간대 설정
       # - forceConnectionTimeZoneToSession=true: 세션 시간대 강제 설정
       # - allowPublicKeyRetrieval=true: 공개 키 인증 허용
-      DB_URL: jdbc:mysql://prod-mysql:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+      # ⚠️ 다른 프로젝트에서 사용 시 .env 파일에서 DB_NAME 설정
+      DB_URL: jdbc:mysql://prod-mysql:3306/${DB_NAME:-mannal}?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
 
       # MySQL 사용자명 (.env 파일에서 로드)
       DB_USERNAME: ${DB_USERNAME}

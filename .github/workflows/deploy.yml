@@ -37,12 +37,17 @@ env:
   # - ghcr.io는 GitHub Container Registry의 도메인 주소
   REGISTRY: ghcr.io
 
-  # Docker 이미지 이름
+  # Docker 이미지 이름 (동적으로 설정)
   # - ${{ github.repository }}는 GitHub이 자동으로 제공하는 값
   # - 형식: "사용자명/저장소명" (예: icesnake72/myauth)
-  # - GHCR은 소문자만 허용하므로 소문자로 변환
-  # - 최종 이미지 경로: ghcr.io/icesnake72/myauth:latest
-  IMAGE_NAME: icesnake72/myauth
+  # - GHCR은 소문자만 허용하므로 소문자로 변환 필요
+  # - 최종 이미지 경로: ghcr.io/{사용자명}/{저장소명}:latest
+  # ⚠️ 다른 프로젝트에 복사할 때 자동으로 적용됨
+  IMAGE_NAME: ${{ github.repository }}
+
+  # 프로젝트 디렉토리 이름 (서버에 배포될 디렉토리)
+  # ⚠️ 다른 프로젝트에 복사할 때 이 값만 변경하면 됨
+  PROJECT_DIR: myauth
 
 # ====================================================================================================
 # 작업(Job) 정의: 실제로 실행할 작업들의 목록
@@ -208,7 +213,8 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           port: 22
           source: "docker-compose.prod.yml"
-          target: "/home/${{ secrets.LIGHTSAIL_USER }}/myauth/"
+          # ⚠️ PROJECT_DIR 환경변수 사용 (다른 프로젝트에서 자동 적용)
+          target: "/home/${{ secrets.LIGHTSAIL_USER }}/${{ env.PROJECT_DIR }}/"
 
       # ================================================================================================
       # 8단계: Lightsail 서버에 SSH 접속하여 배포
@@ -243,20 +249,31 @@ jobs:
           # 서버에서 실행할 배포 스크립트
           # - | 기호: 여러 줄 명령어를 순서대로 실행
           script: |
+            # ===== 0. 프로젝트 디렉토리 변수 설정 =====
+            # ⚠️ GitHub Actions 환경변수는 SSH 세션에서 직접 사용 불가
+            # 따라서 스크립트 시작 시 변수로 다시 정의
+            PROJECT_DIR="${{ env.PROJECT_DIR }}"
+
             # ===== 1. 디렉토리 준비 =====
             # 디렉토리가 없으면 생성 (SCP로 전송된 파일 유지)
-            mkdir -p ~/myauth
-            cd ~/myauth
+            mkdir -p ~/$PROJECT_DIR
+            cd ~/$PROJECT_DIR
 
             # ===== 2. docker-compose.prod.yml 파일 확인 =====
             # SCP action으로 이미 전송된 파일 확인
             echo "docker-compose.prod.yml 파일 확인 중..."
-            ls -lh ~/myauth/docker-compose.prod.yml
+            ls -lh ~/$PROJECT_DIR/docker-compose.prod.yml
 
             # ===== 3. .env 파일 자동 생성 =====
             # GitHub Secrets의 환경변수들로 .env 파일을 자동 생성
             cat > .env << 'EOF'
+            # Docker 이미지 설정 (GitHub Actions에서 자동 설정)
+            # ⚠️ 다른 프로젝트 복사 시 자동으로 적용됨
+            DOCKER_IMAGE=ghcr.io/${{ github.repository }}:latest
+
             # 데이터베이스 설정 (MySQL 컨테이너)
+            # ⚠️ DB_NAME: 다른 프로젝트에서 변경 필요 시 GitHub Secrets에 추가
+            DB_NAME=${{ secrets.DB_NAME }}
             DB_USERNAME=${{ secrets.DB_USERNAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
@@ -299,7 +316,7 @@ jobs:
             #
             # 다운로드되는 이미지:
             # - mysql:8 (Docker Hub 공식 이미지)
-            # - ghcr.io/icesnake72/myauth:latest (이전 단계에서 푸시한 이미지)
+            # - ghcr.io/{사용자명}/{저장소명}:latest (이전 단계에서 푸시한 이미지)
             # - sudo: Docker daemon 접근을 위해 관리자 권한 필요
             sudo docker compose -f docker-compose.prod.yml pull
 
@@ -358,18 +375,24 @@ jobs:
 # 3. LIGHTSAIL_SSH_KEY: SSH private key 내용 (.pem 파일 전체 내용)
 #
 # 데이터베이스 관련:
-# 4. DB_USERNAME: MySQL 사용자명 (예: root)
-# 5. DB_PASSWORD: MySQL 비밀번호
+# 4. DB_NAME: MySQL 데이터베이스 이름 (기본값: mannal)
+# 5. DB_USERNAME: MySQL 사용자명 (예: root)
+# 6. DB_PASSWORD: MySQL 비밀번호
 #
 # JWT 토큰 관련:
-# 6. JWT_SECRET: JWT 서명에 사용할 비밀키 (최소 256비트 권장)
+# 7. JWT_SECRET: JWT 서명에 사용할 비밀키 (최소 256비트 권장)
 #
 # OAuth 카카오 관련:
-# 7. KAKAO_CLIENT_ID: 카카오 REST API 키
-# 8. KAKAO_CLIENT_SECRET: 카카오 Client Secret
+# 8. KAKAO_CLIENT_ID: 카카오 REST API 키
+# 9. KAKAO_CLIENT_SECRET: 카카오 Client Secret
+# 10. KAKAO_REDIRECT_URI: 카카오 콜백 URL
+#
+# 프론트엔드 관련:
+# 11. FRONTEND_URL: 프론트엔드 URL (CORS 설정용)
+# 12. FILE_UPLOAD_BASE_URL: 파일 업로드 URL (선택)
 #
 # 자동 제공:
-# 9. GITHUB_TOKEN: 자동 제공됨 (별도 설정 불필요)
+# - GITHUB_TOKEN: 자동 제공됨 (별도 설정 불필요)
 #
 # GitHub Repository → Settings → Secrets and variables → Actions
 # → New repository secret 클릭하여 추가
