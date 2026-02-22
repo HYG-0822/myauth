@@ -60,7 +60,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # 2. 컨테이너 실행 (백그라운드, 로컬 MySQL 연결)
 #    docker run -d --name myauth \
 #      -p 9080:9080 \
-#      -e DB_URL=jdbc:mysql://host.docker.internal:3306/mannal \
+#      -e DB_URL=jdbc:mysql://host.docker.internal:3306/seok \
 #      -e DB_USERNAME=root \
 #      -e DB_PASSWORD=1234 \
 #      myauth

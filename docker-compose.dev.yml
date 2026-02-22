@@ -36,7 +36,7 @@ services:
     environment:
       # 데이터베이스 연결 설정
       # 기존 mysql-8 컨테이너 이름으로 접근 (같은 네트워크 내에서)
-      DB_URL: jdbc:mysql://mysql-8:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
+      DB_URL: jdbc:mysql://mysql-8:3306/seok?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: 1234
 
@@ -48,7 +48,7 @@ services:
       # OAuth 카카오 설정
       KAKAO_CLIENT_ID: f0bfa98dfa477735feeb8dbfdfa1d105
       KAKAO_CLIENT_SECRET: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV
-      KAKAO_REDIRECT_URI: http://localhost:9080/auth/kakao/callback
+      KAKAO_REDIRECT_URI: http://localhost:8070/auth/kakao/callback
 
       # 파일 업로드 설정
       FILE_UPLOAD_DIR: /app/uploads

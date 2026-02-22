@@ -1,87 +1,76 @@
-# ================================================
-# Docker Compose 설정 파일
-# 기존 MySQL 컨테이너(mysql-8)와 연동
-# ================================================
-
-version: '3.8'
+# version: '3.8'
 
 services:
-  # Spring Boot 애플리케이션
-  myauth:
-    # 이미지 빌드 설정
+  auth:
     build:
       context: .
       dockerfile: Dockerfile
 
-    # 컨테이너 이름
-    container_name: myauth
+    container_name: auth
 
-    # 포트 매핑 (호스트:컨테이너)
     ports:
-      - "9080:9080"
+      - "8070:8070"
 
     # 환경 변수 설정
     environment:
-      # DB 연결 (mysql-8 컨테이너 이름 사용)
-      DB_URL: jdbc:mysql://mysql-8:3306/mannal?useSSL=false&serverTimezone=Asia/Seoul&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
-      DB_USERNAME: root
+      DB_URL: jdbc:mysql://mysql-8:3306/seok?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+      DB_USER: root
       DB_PASSWORD: 1234
+      #      DB_URL: jdbc:mysql://ls-8faa18b81878f46e9606f6423374660053940c3d.cvs88wyuub4j.ap-northeast-2.rds.amazonaws.com:3306/seok?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+      #      DB_USER: dbmasteruser
+      #      DB_PASSWORD: MedV2vOes&qfP5X8,XgZN00^b[XE(AME
 
-      # JWT 설정
-      JWT_SECRET: mySecretKeyForJWTTokenGenerationThisKeyMustBeLongEnoughForHS512Algorithm
-      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
+      JWT_SECRET: cM3qNkRJm2soao2XXUmRPKwVsb8YYmSds0WfNIOGMYOhd7asNe63MARsuaexSUyKNeO8x3BD3b43RkLk5dTxsw==
+      JWT_ACCESS_TOKEN_EXPIRATION: 600000
       JWT_REFRESH_TOKEN_EXPIRATION: 604800000
 
-      # OAuth 카카오 설정
-      KAKAO_CLIENT_ID: f0bfa98dfa477735feeb8dbfdfa1d105
-      KAKAO_CLIENT_SECRET: U4JgTAZGirCvVGmmnvuSlsoWlKFPstvV
-      KAKAO_REDIRECT_URI: http://localhost:9080/auth/kakao/callback
+      KAKAO_CLIENT_ID: 104c0983592d86948311227bfd9c57c0
+      KAKAO_CLIENT_SECRET: HQ4Fr5saQGEDANTSFB4pOndELAeGCJdL
+      KAKAO_REDIRECT_URI: http://localhost:8070/api/oauth/kakao/callback
 
-      # Spring 프로파일
-      SPRING_PROFILES_ACTIVE: dev
+      # Spring profile 정보(개발 전용, 로컬 환경에서 테스트)
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
 
-    # 네트워크 설정 (mysql-8과 같은 네트워크 사용)
-    network_mode: bridge
+    #네트워크 설정
+    networks:
+      - auth-network
+    #    network_mode: bridge
 
-    # 의존성 (mysql-8이 실행 중이어야 함)
+    # 의존성(Dependency)
     external_links:
-      - mysql-8
+      - mysql8
 
     # 재시작 정책
     restart: unless-stopped
 
-# ================================================
-# 사용 방법
-# ================================================
-#
-# 전제조건: mysql-8 컨테이너가 실행 중이어야 함
-#
-# 1. MySQL 컨테이너 확인
-#    docker ps | grep mysql-8
-#
-# 2. myauth 컨테이너 실행
-#    docker-compose up -d
-#
-# 3. 로그 확인
-#    docker-compose logs -f myauth
-#
-# 4. 중지
-#    docker-compose stop
-#
-# 5. 재시작
-#    docker-compose restart
-#
-# 6. 삭제
-#    docker-compose down
-#
-# 7. 강제 재빌드
-#    docker-compose up -d --build
-#
-# ================================================
-#
-# 참고:
-# - 기존 mysql-8 컨테이너를 사용합니다
-# - MySQL 포함 버전: docker-compose-shared.yml 참고
-# - MySQL 독립 실행: docker-compose-mysql-only.yml 참고
-#
-# ================================================
+# 기존 auth-network에 연결함
+networks:
+  auth-network:
+    driver: bridge
+    external: true
+
+################################################################
+# 1. auth container 실행하기
+# 빌드하지 않고 백그라운드로 컨테이너를 바로 시작하기
+# docker compose up -d
+
+# 빌드하고 백그라운드로 컨테이너를 바로 시작하기
+# docker compose up -d --build
+
+# 2. 로그 확인하기(실시간, 종료하려면 ctrl + c)
+# docker compose logs -f auth
+
+# 3. 정지
+# docker compose stop
+
+# 4. 재시작
+# docker compose restart
+
+# 5. 삭제
+# docker compose down
+
+# 6. 빌드 후 시작하기
+# docker compose up -d --build
+
+# 7. 컨테이너 & 이미지 삭제
+# docker compose down --rmi all
