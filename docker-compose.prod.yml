@@ -17,7 +17,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
 
       # 데이터베이스 자동 생성
-      MYSQL_DATABASE: ${DB_NAME:-seok}
+      MYSQL_DATABASE: ${DB_NAME}
 
       # 시간대 설정
       TZ: Asia/Seoul
