@@ -5,7 +5,7 @@
 
 # 서버 설정 - HTTP (Nginx가 HTTPS 처리)
 server:
-  port: 9080  # 내부 포트 (Nginx를 통해서만 접근)
+  port: 8070  # 내부 포트 (Nginx를 통해서만 접근)
 
 # 로깅 설정 - 프로덕션 환경에서는 중요한 로그만 출력
 logging:
