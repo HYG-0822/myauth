@@ -60,7 +60,7 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    image: ghcr.io/hyg-0822/as_auth:latest
+    image: ghcr.io/hyg-0822/myauth:latest
     container_name: prod-auth
 
     ports:
