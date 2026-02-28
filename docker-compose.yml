@@ -15,7 +15,7 @@ services:
     environment:
       DB_URL: jdbc:mysql://mysql-8:3306/seok?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
       DB_USER: root
-      DB_PASSWORD: 1234
+      DB_PASSWORD: mj38327348!
       #      DB_URL: jdbc:mysql://ls-8faa18b81878f46e9606f6423374660053940c3d.cvs88wyuub4j.ap-northeast-2.rds.amazonaws.com:3306/seok?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
       #      DB_USER: dbmasteruser
       #      DB_PASSWORD: MedV2vOes&qfP5X8,XgZN00^b[XE(AME
