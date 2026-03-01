@@ -50,7 +50,7 @@ spring:
 
   jpa: # ORM
     hibernate:
-      ddl-auto: none # create(항상 새롭게 테이블 생성), update(테이블 업데이트), validate(엔티티와 테이블구조 일치하는지 검증)...
+      ddl-auto: create # create(항상 새롭게 테이블 생성), update(테이블 업데이트), validate(엔티티와 테이블구조 일치하는지 검증)...
     show-sql: true  # sql문장이 잘 가는지 디버깅 용도
     properties:
       hibernate:
