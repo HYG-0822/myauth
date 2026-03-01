@@ -61,7 +61,7 @@ services:
       dockerfile: Dockerfile
 
     image: ghcr.io/hyg-0822/myauth:latest
-    container_name: prod-auth
+    container_name: prod-backend
 
     ports:
       - "8070:8070"
