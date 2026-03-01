@@ -10,7 +10,6 @@ jwt:
 
 oauth:
   kakao:
-    provider_name: KAKAO
     client-id: ${KAKAO_CLIENT_ID:104c0983592d86948311227bfd9c57c0}   # 카카오 REST API KEY
     client-secret: ${KAKAO_CLIENT_SECRET:HQ4Fr5saQGEDANTSFB4pOndELAeGCJdL}             # 카카오 Client Secret Key
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8070/api/oauth/kakao/callback}   # 카카오 인증 후 백엔드에 redirect 되어진 URL
@@ -50,7 +49,7 @@ spring:
 
   jpa: # ORM
     hibernate:
-      ddl-auto: create # create(항상 새롭게 테이블 생성), update(테이블 업데이트), validate(엔티티와 테이블구조 일치하는지 검증)...
+      ddl-auto: none # create(항상 새롭게 테이블 생성), update(테이블 업데이트), validate(엔티티와 테이블구조 일치하는지 검증)...
     show-sql: true  # sql문장이 잘 가는지 디버깅 용도
     properties:
       hibernate:
